@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use serde::{de::Error,Deserialize};
+use serde_json;
 
 #[derive(Debug, Deserialize)]
 pub struct Email {
@@ -8,9 +9,13 @@ pub struct Email {
 }
 
 impl Email {
-    pub fn to_struct(buf: &[u8; 1024], n: usize) -> Self {
-        let email = serde_json::from_slice::<Email>(&buf[..n]).unwrap();
-        email
+
+    pub fn to_struct_single(buf: &[u8; 1024], n: usize) -> Result<Self, serde_json::Error> {
+        serde_json::from_slice::<Email>(&buf[..n])
+    }
+
+    pub fn to_struct_batches(buf: &[u8; 1024], n : usize ) -> Result<Vec<Self>, serde_json::Error>{
+         serde_json::from_slice::<Vec<Email>>(&buf[..n])
     }
 
     pub fn sending_email (self) {

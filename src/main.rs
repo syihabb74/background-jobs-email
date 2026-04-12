@@ -32,7 +32,6 @@ fn main() {
         loop {
             match rx.recv_timeout(Duration::from_millis(500)) {
                 Ok(email) => {
-                    println!("Running forever");
                     let state_clone = Arc::clone(&worker_state_app_cloned);
                     thread::spawn(move || {
                         {
