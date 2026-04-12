@@ -1,16 +1,12 @@
-use core::error;
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::UnixListener,
-    rc::Rc,
-    sync::{
-        Arc,
-        mpsc::{Receiver, Sender},
-    },
+    sync::{Arc, Mutex, mpsc::Sender},
     thread,
+    time::Duration,
 };
 
-use crate::{WILL_SHUTDOWN, email::Email};
+use crate::{WILL_SHUTDOWN, app_state::AppState, email::Email};
 
 #[derive(Debug)]
 pub struct UnixServer {
@@ -49,43 +45,68 @@ impl UnixServer {
         }
     }
 
-    pub fn listening(&mut self, tx: Sender<Email>) {
-        if let Some(ref listener) = self.listener {
-            for stream in listener.incoming() {
-                let sender = tx.clone();
-                let _ = thread::spawn(move || {
-                    let mut stream = stream.unwrap();
-                    let mut buffer = [0u8; 1024];
+    pub fn listening(&mut self, tx: Sender<Email>, state: Arc<Mutex<AppState>>) {
+    if let Some(ref listener) = self.listener {
+        listener.set_nonblocking(true).ok();
 
-                    loop {
-                        match stream.read(&mut buffer) {
-                            Ok(0) => {
-                                println!("Client disconnected");
-                                break;
-                            }
-                            Ok(n) => {
-                                println!("{}", WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed));
-                                if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
-                                    println!("Will shutdown process");
-                                    stream.write_all(b"Server will shutdown").ok();
-                                    stream.flush().ok();
-                                } else {
-                                    let email = Email::to_struct(&mut buffer, n);
-                                    sender.send(email).unwrap();
-                                    stream.write_all(b"OK: Email received processing background jobs\n").ok();
-                                    stream.flush().ok();
+        loop {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    let state = Arc::clone(&state);
+                    let sender = tx.clone();
+                    thread::spawn(move || {
+                        stream.set_read_timeout(Some(Duration::from_millis(500))).ok();
+                        let mut buffer = [0u8; 1024];
+
+                        loop {
+                            match stream.read(&mut buffer) {
+                                Ok(0) => {
+                                    println!("Client disconnected");
+                                    break;
+                                }
+                                Ok(n) => {
+                                    if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
+                                        stream.write_all(b"Server will shutdown").ok();
+                                        stream.flush().ok();
+                                    } else {
+                                        let email = Email::to_struct(&mut buffer, n);
+                                        sender.send(email).unwrap();
+                                        stream.write_all(b"OK: Email received processing background jobs\n").ok();
+                                        stream.flush().ok();
+                                    }
+                                }
+                                Err(e) if e.kind() == ErrorKind::WouldBlock
+                                    || e.kind() == ErrorKind::TimedOut => {}
+                                Err(e) => {
+                                    eprintln!("Error: {}", e);
+                                    break;
                                 }
                             }
-                            Err(e) => {
-                                eprintln!("Error: {}", e);
-                                break;
+
+                            if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
+                                let state = state.lock().unwrap();
+                                if state.total_works == 0 {
+                                    break;
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {}
+                Err(e) => {
+                    eprintln!("Accept error: {}", e);
+                    break;
+                }
             }
+
+            if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+
+            thread::sleep(Duration::from_millis(500));
         }
     }
+}
 
     fn disconnected(&mut self) {
         if let Some(_listener) = self.listener.take() {

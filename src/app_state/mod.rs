@@ -1,10 +1,10 @@
-use crate::{WILL_SHUTDOWN, email::Email, queue::Queue};
+use crate::{email::Email, queue::Queue};
 
 #[derive(Debug)]
 pub struct AppState {
-    has_works: bool,
-    total_works: u32,
-    queue: Queue,
+    pub has_works: bool,
+    pub total_works: u32,
+    pub queue: Queue,
 }
 
 impl Default for AppState {
@@ -18,16 +18,28 @@ impl Default for AppState {
 }
 
 impl AppState {
-    pub fn add_work(&mut self, email: Email) {
-        self.add_total_works();
+    pub fn enqueue(&mut self, email: Email) {
         self.queue.add_queue(email);
-        println!("{self:?}")
+        self.add_total_works();
+    }
+
+    pub fn dequeue(&mut self) {
+        self.queue.remove_queue();
+        self.decrease_total_works();
     }
 
     fn add_total_works(&mut self) {
         if !self.has_works {
             self.has_works = true;
         }
-        self.total_works += 1
+        self.total_works = self.queue.get_total_work() as u32;
     }
+
+    fn decrease_total_works(&mut self) {
+        self.total_works = self.queue.get_total_work() as u32;
+        if self.total_works == 0 {
+            self.has_works = false
+        }
+    }
+
 }

@@ -12,4 +12,9 @@ impl Email {
         let email = serde_json::from_slice::<Email>(&buf[..n]).unwrap();
         email
     }
+
+    pub fn sending_email (self) {
+        println!("Email sending to {}", self.to);
+    }
+
 }

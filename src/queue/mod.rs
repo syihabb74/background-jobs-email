@@ -19,13 +19,19 @@ use crate::{email::{Email}};
         pub fn add_queue (&mut self, email : Email) {
             
             self.queue.push_back(email);
+            println!("{:?}", self.queue)
 
+        }
+
+        pub fn get_total_work (&self) -> usize {
+            self.queue.len()
         }
 
         pub fn remove_queue(&mut self) {
             let email = self.queue.pop_back();
+            println!("{:?}", self.queue);
             if let Some(email_exist) = email {
-                // email_exist . sending
+                email_exist.sending_email();
             }
         }
 
