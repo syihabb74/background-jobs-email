@@ -1,10 +1,9 @@
 use std::{
     sync::{Arc, Mutex, mpsc},
     thread,
-    time::Duration,
 };
 
-use background_jobs::{WILL_SHUTDOWN, app_state::AppState, signaling, uds::UnixServer};
+use background_jobs::{app_state::AppState, signaling, uds::UnixServer, worker::worker};
 
 fn main() {
     let graceful_shutdown = signaling::graceful_shutdown();
@@ -28,37 +27,7 @@ fn main() {
         server.listening(tx, state);
     });
 
-    let worker = thread::spawn(move || {
-        loop {
-            match rx.recv_timeout(Duration::from_millis(500)) {
-                Ok(email) => {
-                    let state_clone = Arc::clone(&worker_state_app_cloned);
-                    thread::spawn(move || {
-                        {
-                            let mut state = state_clone.lock().unwrap();
-                            state.enqueue(email);
-                        }
-                        thread::sleep(Duration::from_millis(3000));
-                        {
-                            let mut state = state_clone.lock().unwrap();
-                            state.dequeue();
-                        }
-                    });
-                }
-                Err(_) => {
-                    println!("Nyangkut di worker")
-                }
-            }
-
-            if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
-                let state = state_app.lock().unwrap();
-                if state.total_works == 0 && !state.has_works {
-                    break;
-                }
-            }
-        }
-    });
-
+    let worker = worker(rx, worker_state_app_cloned);
     server.join().unwrap();
     worker.join().unwrap();
     graceful_shutdown.join().unwrap();

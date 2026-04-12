@@ -5,5 +5,6 @@ pub mod email;
 pub mod app_state;
 pub mod queue;
 pub mod signaling;
+pub mod worker;
 
 pub static WILL_SHUTDOWN: AtomicBool = AtomicBool::new(false);
