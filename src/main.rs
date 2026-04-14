@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use background_jobs::{app_state::AppState, signaling, uds::UnixServer, worker::worker};
+use background_jobs::{app_state::AppState, signaling, thread_pool::ThreadPool, uds::UnixServer, worker::worker};
 
 fn main() {
     let graceful_shutdown = signaling::graceful_shutdown();
@@ -11,6 +11,8 @@ fn main() {
     let uds_state_app_cloned = Arc::clone(&state_app);
     let worker_state_app_cloned = Arc::clone(&state_app);
     let (tx, rx) = mpsc::channel();
+    let pool_thread = ThreadPool::new(4);
+    
 
     let mut server = UnixServer::build(String::from("/tmp/server_bg_jobs.sock"));
     let run = server.deploy_uds();
@@ -27,7 +29,7 @@ fn main() {
         server.listening(tx, state);
     });
 
-    let worker = worker(rx, worker_state_app_cloned);
+    // let worker = worker(rx, worker_state_app_cloned);
     server.join().unwrap();
     worker.join().unwrap();
     graceful_shutdown.join().unwrap();

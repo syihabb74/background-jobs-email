@@ -80,7 +80,9 @@ impl UnixServer {
                                                 Email::to_struct_batches(&mut buffer, n)
                                             {
                                                 for email in vec_email.into_iter() {
-                                                    sender.send(email).unwrap()
+                                                    let fn_once : Box<dyn FnOnce() + Send + 'static> = Box::new(move || {
+                                                        sender.send(email).unwrap()
+                                                    });
                                                 }
                                             };
 

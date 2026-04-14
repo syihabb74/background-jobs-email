@@ -1,23 +1,23 @@
 use std::{
     sync::{
         Arc, Mutex,
-        mpsc::{self, Sender},
+        mpsc::{self, Receiver},
     },
     thread::{self, JoinHandle}, time::Duration,
 };
 
+use crate::email::Email;
+
 pub struct ThreadPool {
     pub workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
 }
 
-pub type Job = Box<dyn FnOnce() + Send + 'static>;
+pub type Job = Box<dyn FnOnce(Email) + Send + 'static>;
 
 impl ThreadPool {
-    pub fn new(size: usize) -> Self {
+    pub fn new(size: usize, rx : Arc<Mutex<Receiver<Job>>>) -> Self {
         let mut workers: Vec<Worker> = Vec::with_capacity(size);
-        let (tx, rx) = mpsc::channel::<Job>();
-        let rx = Arc::new(Mutex::new(rx));
+        let rx = Arc::clone(&rx);
 
         for id in 1..=size {
                 let rx = Arc::clone(&rx);
@@ -25,15 +25,7 @@ impl ThreadPool {
                 workers.push(worker);
         }
 
-        return Self { workers, sender : tx };
-    }
-
-    pub fn execute<F>(&self, f: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        return Self { workers};
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex, mpsc::{self, Receiver}}, thread::{self, JoinHandle}, time::Duration};
+use std::{sync::{Arc, Mutex, mpsc::{Receiver}}, thread::{self, JoinHandle}, time::Duration};
 
 use crate::{WILL_SHUTDOWN, app_state::AppState, email::Email};
 
