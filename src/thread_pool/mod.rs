@@ -6,13 +6,11 @@ use std::{
     thread::{self, JoinHandle}, time::Duration,
 };
 
-use crate::email::Email;
-
 pub struct ThreadPool {
     pub workers: Vec<Worker>,
 }
 
-pub type Job = Box<dyn FnOnce(Email) + Send + 'static>;
+pub type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl ThreadPool {
     pub fn new(size: usize, rx : Arc<Mutex<Receiver<Job>>>) -> Self {

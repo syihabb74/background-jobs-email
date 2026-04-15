@@ -13,7 +13,7 @@ pub fn worker (receiver : Receiver<Email>, app_state : Arc<Mutex<AppState>>) -> 
                     thread::spawn(move || {
                         {
                             let mut state = state_clone.lock().unwrap();
-                            state.enqueue(email);
+                            state.enqueue();
                         }
                         thread::sleep(Duration::from_millis(3000));
                         {

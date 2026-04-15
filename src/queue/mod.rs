@@ -1,4 +1,4 @@
-use std::{collections::VecDeque};
+use std::{collections::VecDeque, sync::mpsc::Receiver};
 
 use crate::{email::{Email}};
 
@@ -8,12 +8,13 @@ use crate::{email::{Email}};
     #[derive(Debug)]
     pub struct Queue {
         pub queue : VecDeque<Email>,
+        pub receiver : Receiver<Email>
        
     }
 
     impl Queue {
-        pub fn default () -> Self {
-            Self { queue: VecDeque::new() }
+        pub fn new (receiver : Receiver<Email>) -> Self {
+            Self { queue: VecDeque::new(), receiver }
         }
 
         pub fn add_queue (&mut self, email : Email) {
