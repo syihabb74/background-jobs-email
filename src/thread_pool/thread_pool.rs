@@ -1,4 +1,4 @@
-use std::{os::macos::raw::stat, sync::{Arc, Condvar, Mutex}};
+use std::{sync::{Arc, Condvar, Mutex}};
 
 use crate::{app_state::AppState, queue::Queue, thread_pool::worker::Worker};
 
@@ -12,6 +12,11 @@ impl ThreadPool {
         queue_state: Arc<(Mutex<Queue>, Condvar)>,
         app_state: Arc<Mutex<AppState>>,
     ) -> Self {
+
+        if size < 1 {
+            panic!("0 or negative is not allowed");
+        }
+
         let mut workers_vec = Vec::with_capacity(size);
         for i in 1..=size {
             let state_app = Arc::clone(&app_state);

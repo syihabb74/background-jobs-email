@@ -1,4 +1,4 @@
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::{sync::{Arc, Condvar, Mutex, mpsc}, thread};
 
 use background_jobs::{app_state::AppState, queue::Queue, signaling, thread_pool::{self}, uds::UnixServer};
 
@@ -25,9 +25,12 @@ fn main() {
             println!("{}", e)
         }
     }
-    server.listening(tx);
+
+    thread::spawn(move || {
+        server.listening(tx);
+    });
     let dedicated_thread = Queue::dedicated_thread(queue_clone, rx, cloned_stated_app);
-    let x = thread_pool::thread_pool::ThreadPool::new(4, queue_clone_rx, state_app_rx);
+    thread_pool::thread_pool::ThreadPool::new(4, queue_clone_rx, state_app_rx);
 
     graceful_shutdown.join().unwrap();
     dedicated_thread.join().unwrap();

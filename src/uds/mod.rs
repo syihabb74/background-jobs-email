@@ -1,12 +1,14 @@
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::UnixListener,
-    sync::{Arc, Mutex, mpsc::Sender},
+    sync::{mpsc::Sender},
     thread,
     time::Duration,
 };
 
-use crate::{WILL_SHUTDOWN, app_state::AppState, email::Email};
+use colored::Colorize;
+
+use crate::{WILL_SHUTDOWN, email::Email};
 
 #[derive(Debug)]
 pub struct UnixServer {
@@ -71,6 +73,7 @@ impl UnixServer {
                                             stream.write_all(b"Server will shutdown").ok();
                                             stream.flush().ok();
                                         } else {
+                                            println!("{}", format!("Sending").blue());
                                             if let Ok(email) =
                                                 Email::to_struct_single(&mut buffer, n)
                                             {

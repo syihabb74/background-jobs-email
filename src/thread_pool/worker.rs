@@ -1,8 +1,8 @@
 use std::{
     sync::{Arc, Condvar, Mutex},
-    thread::{self, JoinHandle},
+    thread::{self, JoinHandle}, time::Duration,
 };
-
+use colored::Colorize;
 use crate::{app_state::AppState, queue::Queue};
 
 pub struct Worker {
@@ -16,6 +16,7 @@ impl Worker {
         queue: Arc<(Mutex<Queue>, Condvar)>,
         app_state: Arc<Mutex<AppState>>,
     ) -> Self {
+
         let thread = thread::spawn(move || {
             let (lock, cvar) = &*queue;
 
@@ -27,15 +28,15 @@ impl Worker {
                 }
 
                 let job = guard.remove_queue();
-                println!("thread no {} {:?}", no, guard.queue);
 
                 let mut app_state_lock = app_state.lock().unwrap();
                 app_state_lock.decrease_task();
                 drop(app_state_lock);
                 drop(guard);
 
-                if let Some(job) = job {
-                    println!("Worker {} memproses job: {:?}", no, job);
+                if let Some(_) = job {
+                    println!("{}", format!("Worker {} memproses", no).red());
+                    thread::sleep(Duration::from_millis(5000));
                 }
             }
         });
