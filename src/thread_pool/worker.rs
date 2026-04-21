@@ -31,6 +31,7 @@ impl Worker {
 
                 let mut app_state_lock = app_state.lock().unwrap();
                 app_state_lock.decrease_task();
+                println!("{}", format!("Jumlah Task {}", app_state_lock.total_task).red());
                 drop(app_state_lock);
                 drop(guard);
 

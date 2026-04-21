@@ -48,9 +48,10 @@ impl Queue {
                 println!("{}", "Adding".green());
                 lock.add_queue(email);
                 let mut state_app_lock = state_app.lock().unwrap();
+                println!("{}", format!("Jumlah Task {}", state_app_lock.total_task).green());
                 state_app_lock.increase_task();
                 drop(state_app_lock);
-                cvar.notify_all();
+                cvar.notify_one();
             }
             
         })

@@ -1,11 +1,9 @@
 use std::{
     io::{ErrorKind, Read, Write},
-    os::unix::net::UnixListener,
-    sync::{mpsc::Sender},
-    thread,
-    time::Duration,
+    os::unix::net::{UnixListener, UnixStream},
+    sync::mpsc::Sender, thread, time::Duration,
 };
-
+use std::sync::atomic::Ordering::Relaxed;
 use colored::Colorize;
 
 use crate::{WILL_SHUTDOWN, email::Email};
@@ -48,67 +46,32 @@ impl UnixServer {
     }
 
     pub fn listening(&mut self, tx: Sender<Email>) {
-        if let Some(ref listener) = self.listener {
-            listener.set_nonblocking(true).ok();
-
-            loop {
-                match listener.accept() {
-                    Ok((mut stream, _)) => {
-                        let sender = tx.clone();
-                        thread::spawn(move || {
-                            stream
-                                .set_read_timeout(Some(Duration::from_millis(500)))
-                                .ok();
-                            let mut buffer = [0u8; 1024];
-
-                            loop {
-                                match stream.read(&mut buffer) {
-                                    Ok(0) => {
-                                        println!("Client disconnected");
-                                        break;
-                                    }
-                                    Ok(n) => {
-                                        if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed)
-                                        {
-                                            stream.write_all(b"Server will shutdown").ok();
-                                            stream.flush().ok();
-                                        } else {
-                                            println!("{}", format!("Sending").blue());
-                                            if let Ok(email) =
-                                                Email::to_struct_single(&mut buffer, n)
-                                            {
-                                                sender.send(email).unwrap();
-                                            } else if let Ok(vec_email) =
-                                                Email::to_struct_batches(&mut buffer, n)
-                                            {
-                                                for email in vec_email.into_iter() {
-                                                    sender.send(email).unwrap()
-                                                }
-                                            };
-
-                                            stream.write_all(b"OK: Email received processing background jobs\n").ok();
-                                            stream.flush().ok();
-                                        }
-                                    }
-                                    Err(e)
-                                        if e.kind() == ErrorKind::WouldBlock
-                                            || e.kind() == ErrorKind::TimedOut => {}
-                                    Err(e) => {
-                                        eprintln!("Error: {}", e);
-                                        break;
-                                    }
-                                }
-
+        let unix_listener = self.listener.as_ref();
+        match unix_listener {
+            Some(listener) => {
+                loop {
+                    println!("Running");
+                    let sender = tx.clone();
+                    let connection = listener.accept();
+                    match connection {
+                        Ok((mut stream, _)) => {
+                            if WILL_SHUTDOWN.load(Relaxed) {
+                                let _ = stream.write_all(b"Connected successfully but server will be shutdown");
+                                let _ = stream.flush().ok();
+                                break;
                             }
-                        });
-                    }
-                    Err(e) if e.kind() == ErrorKind::WouldBlock => {}
-                    Err(e) => {
-                        eprintln!("Accept error: {}", e);
-                        break;
+                            thread::spawn(move || {
+                                handle_client(stream, sender);
+                            });
+                        },
+                        _ => {
+                            println!("Idle");
+                        }
                     }
                 }
-
+            },
+            _ => {
+                println!("No connection");
             }
         }
     }
@@ -138,5 +101,42 @@ impl Drop for UnixServer {
     fn drop(&mut self) {
         println!("Shutdown...");
         self.disconnected();
+    }
+}
+
+fn handle_client(mut stream: UnixStream, sender: Sender<Email>) {
+    let mut buffer = [0u8; 1024];
+    loop {
+        if WILL_SHUTDOWN.load(Relaxed) {
+            break;
+        }
+        match stream.read(&mut buffer) {
+            Ok(0) => {
+                break;
+            }
+            Ok(n) => {
+                if WILL_SHUTDOWN.load(std::sync::atomic::Ordering::Relaxed) {
+                    stream.write_all(b"Server will shutdown").ok();
+                    stream.flush().ok();
+                } else {
+                    if let Ok(email) = Email::to_struct_single(&mut buffer, n) {
+                        sender.send(email).unwrap();
+                    } else if let Ok(vec_email) = Email::to_struct_batches(&mut buffer, n) {
+                        for email in vec_email.into_iter() {
+                            sender.send(email).unwrap()
+                        }
+                    };
+
+                    stream
+                        .write_all(b"OK: Email received processing background jobs\n")
+                        .ok();
+                    stream.flush().ok();
+                }
+            }
+            Err(e) => {
+                eprintln!("read error: {}", e);
+                break;
+            }
+        }
     }
 }
