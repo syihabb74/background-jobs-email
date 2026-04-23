@@ -44,7 +44,7 @@ impl UnixServer {
         }
     }
 
-    pub fn listening(&mut self, tx: Sender<Email>, app_state : Arc<Mutex<AppState>>) {
+    pub fn listening(&mut self, tx: Sender<Email>) {
         let unix_listener = self.listener.as_ref();
         match unix_listener {
             Some(listener) => {
@@ -67,11 +67,10 @@ impl UnixServer {
                             });
                         },
                         Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                            let guard = app_state.lock().unwrap();
-                            if WILL_SHUTDOWN.load(Relaxed) && !guard.has_task {
+                            if WILL_SHUTDOWN.load(Relaxed) {
                                 break;
                             }
-                            thread::sleep(Duration::from_millis(2000));
+                            thread::sleep(Duration::from_millis(1000));
                         },
                         _ => {
                             println!("Unexpected error happening at UDS")

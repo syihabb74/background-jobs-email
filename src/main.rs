@@ -14,7 +14,6 @@ fn main() {
     let queue_clone = Arc::clone(&queue);
     let queue_clone_rx = Arc::clone(&queue);
     let state_app_rx = Arc::clone(&state_app);
-    let state_app_uds = Arc::clone(&state_app);
     
     let mut server = UnixServer::build(String::from("/tmp/server_bg_jobs.sock"));
     let run = server.deploy_uds();
@@ -28,7 +27,7 @@ fn main() {
     }
 
     thread::spawn(move || {
-        server.listening(tx, state_app_uds);
+        server.listening(tx);
     });
     let dedicated_thread = Queue::dedicated_thread(queue_clone, rx, cloned_stated_app);
     thread_pool::thread_pool::ThreadPool::new(4, queue_clone_rx, state_app_rx);
