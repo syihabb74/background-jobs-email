@@ -1,11 +1,11 @@
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
-    sync::mpsc::Sender, thread
+    sync::{Arc, Mutex, mpsc::Sender}, thread, time::Duration
 };
 use std::sync::atomic::Ordering::Relaxed;
 
-use crate::{WILL_SHUTDOWN, email::Email};
+use crate::{WILL_SHUTDOWN, app_state::{self, AppState}, email::Email};
 
 #[derive(Debug)]
 pub struct UnixServer {
@@ -44,13 +44,15 @@ impl UnixServer {
         }
     }
 
-    pub fn listening(&mut self, tx: Sender<Email>) {
+    pub fn listening(&mut self, tx: Sender<Email>, app_state : Arc<Mutex<AppState>>) {
         let unix_listener = self.listener.as_ref();
         match unix_listener {
             Some(listener) => {
-                println!("Connect");
+                let non_blocking = listener.set_nonblocking(true);
+                if let Err(e) = non_blocking {
+                    println!("{}", e);
+                }
                 loop {
-                    println!("Running");
                     let sender = tx.clone();
                     let connection = listener.accept();
                     match connection {
@@ -64,15 +66,25 @@ impl UnixServer {
                                 handle_client(stream, sender);
                             });
                         },
+                        Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                            let guard = app_state.lock().unwrap();
+                            if WILL_SHUTDOWN.load(Relaxed) && !guard.has_task {
+                                break;
+                            }
+                            thread::sleep(Duration::from_millis(2000));
+                        },
                         _ => {
-                            println!("Idle");
+                            println!("Unexpected error happening at UDS")
                         }
                     }
                 }
+                println!("Successfully exit in uds")
             },
             _ => {
                 println!("No connection");
             }
+
+
         }
     }
 
@@ -109,6 +121,7 @@ fn handle_client(mut stream: UnixStream, sender: Sender<Email>) {
     loop {
         println!("Running stream");
         if WILL_SHUTDOWN.load(Relaxed) {
+            println!("WIll break");
             break;
         }
         match stream.read(&mut buffer) {

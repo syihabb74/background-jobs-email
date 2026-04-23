@@ -53,9 +53,15 @@ impl Queue {
                 drop(lock);
                 drop(state_app_lock);
                 cvar.notify_one();
+            } 
+
+
+            if let Err(e) =  rx.recv() {
+                println!("{:?}", e);
+                println!("Disconnected");
             }
 
-            println!("Queue clean up after SIGINT or SIGTERM signal Received")
+            
             
         })
     }

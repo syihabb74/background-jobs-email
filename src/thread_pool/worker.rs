@@ -44,11 +44,12 @@ impl Worker {
                         format!("Jumlah Task {}", app_state_lock.total_task).red()
                     );
                     drop(app_state_lock);
+                    thread::sleep(Duration::from_millis(5000));
                     println!("{}", format!("Worker {} memproses", no).red());
                 }
             }
 
-            println!("Queue clean up after SIGINT or SIGTERM signal Received")
+            println!("Worker clean up after SIGINT or SIGTERM signal Received")
 
         });
 
