@@ -1,11 +1,17 @@
+use std::sync::atomic::Ordering::Relaxed;
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
-    sync::{Arc, Mutex, mpsc::Sender}, thread, time::Duration
+    sync::{Arc, Mutex, mpsc::Sender},
+    thread,
+    time::Duration,
 };
-use std::sync::atomic::Ordering::Relaxed;
 
-use crate::{WILL_SHUTDOWN, app_state::{self, AppState}, email::Email};
+use crate::{
+    WILL_SHUTDOWN,
+    app_state::{self, AppState},
+    email::Email,
+};
 
 #[derive(Debug)]
 pub struct UnixServer {
@@ -58,32 +64,32 @@ impl UnixServer {
                     match connection {
                         Ok((mut stream, _)) => {
                             if WILL_SHUTDOWN.load(Relaxed) {
-                                let _ = stream.write_all(b"Connected successfully but server will be shutdown");
+                                let _ = stream.write_all(
+                                    b"Connected successfully but server will be shutdown",
+                                );
                                 let _ = stream.flush().ok();
                                 break;
                             }
                             thread::spawn(move || {
                                 handle_client(stream, sender);
                             });
-                        },
+                        }
                         Err(e) if e.kind() == ErrorKind::WouldBlock => {
                             if WILL_SHUTDOWN.load(Relaxed) {
                                 break;
                             }
-                            thread::sleep(Duration::from_millis(1000));
-                        },
+                            thread::sleep(Duration::from_millis(20));
+                        }
                         _ => {
                             println!("Unexpected error happening at UDS")
                         }
                     }
                 }
                 println!("Successfully exit in uds")
-            },
+            }
             _ => {
                 println!("No connection");
             }
-
-
         }
     }
 
@@ -118,10 +124,9 @@ impl Drop for UnixServer {
 fn handle_client(mut stream: UnixStream, sender: Sender<Email>) {
     let mut buffer = [0u8; 1024];
     loop {
-        println!("Running stream");
         if WILL_SHUTDOWN.load(Relaxed) {
-            println!("WIll break");
-            break;
+            stream.write_all(b"Server will be shutdown").unwrap();
+            continue
         }
         match stream.read(&mut buffer) {
             Ok(0) => {
@@ -146,9 +151,18 @@ fn handle_client(mut stream: UnixStream, sender: Sender<Email>) {
                     stream.flush().ok();
                 }
             }
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(20));
+                if WILL_SHUTDOWN.load(Relaxed) {
+                    println!("WIll break");
+                    break;
+                }
+            }
             Err(e) => {
-                eprintln!("read error: {}", e);
-                break;
+                println!(
+                    "Unexpected Error happenned at handle_client fn {:#?}",
+                    e.kind()
+                )
             }
         }
     }
