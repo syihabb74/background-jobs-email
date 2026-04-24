@@ -1,4 +1,4 @@
-use std::{process, thread::{self, JoinHandle}};
+use std::{thread::{self, JoinHandle}};
 use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
 use crate::WILL_SHUTDOWN;
 

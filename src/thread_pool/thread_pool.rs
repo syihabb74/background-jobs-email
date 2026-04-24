@@ -3,7 +3,7 @@ use std::{sync::{Arc, Condvar, Mutex}};
 use crate::{app_state::AppState, queue::Queue, thread_pool::worker::Worker};
 
 pub struct ThreadPool {
-    workers: Vec<Worker>,
+    _workers: Vec<Worker>,
 }
 
 impl ThreadPool {
@@ -25,7 +25,7 @@ impl ThreadPool {
             workers_vec.push(worker);
         }
         Self {
-            workers: workers_vec,
+            _workers: workers_vec,
         }
     }
 }

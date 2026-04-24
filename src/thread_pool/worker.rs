@@ -8,8 +8,8 @@ use std::{
 };
 
 pub struct Worker {
-    no: usize,
-    thread: JoinHandle<()>,
+    _no: usize,
+    _thread: JoinHandle<()>,
 }
 
 impl Worker {
@@ -52,6 +52,10 @@ impl Worker {
 
         });
 
-        Self { no, thread }
+        let _no = no;
+        let _thread = thread;
+
+        Self { _no, _thread }
     }
 }
+

@@ -2,14 +2,13 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
-    sync::{Arc, Mutex, mpsc::Sender},
+    sync::{ mpsc::Sender},
     thread,
     time::Duration,
 };
 
 use crate::{
     WILL_SHUTDOWN,
-    app_state::{self, AppState},
     email::Email,
 };
 
