@@ -57,16 +57,21 @@ impl<T: Read + Write> LiveSmtp<T> {
     }
 
     pub fn upgrade_tls(
-        self,
+        mut self,
         host: &str,
+        buff_reader : BufReader<&mut T>
     ) -> Result<LiveSmtp<StreamOwned<ClientConnection, T>>, Box<dyn std::error::Error>> {
+        let mut move_buff_reader = buff_reader;
+
+        let _ = self.communicating(&mut move_buff_reader, b"STARTTLS \r\n");
+
         let mut root_store = RootCertStore::empty();
         root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
         let config = Arc::new(
             ClientConfig::builder()
                 .with_root_certificates(root_store)
-                .with_no_client_auth(),
+                .with_no_client_auth()
         );
 
         let server_name = ServerName::try_from(host)?.to_owned();
