@@ -93,7 +93,6 @@ impl<T: Read + Write> LiveSmtp<T> {
         host: &str,
         buff_reader : BufReader<&mut T>
     ) -> Result<LiveSmtp<StreamOwned<ClientConnection, T>>, Box<dyn std::error::Error>> {
-        let mut move_buff_reader = buff_reader;
 
         let _ = self.communicating(b"STARTTLS \r\n", None);
 
