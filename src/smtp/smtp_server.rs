@@ -37,14 +37,22 @@ pub struct LiveSmtp<T: Read + Write> {
 impl<T: Read + Write> LiveSmtp<T> {
     pub fn communicating(
         &mut self,
-        buff_reader : &mut BufReader<&mut T>,
         cmd: &[u8],
         closure : Option<Closure>
     ) -> Result<(), Box<dyn std::error::Error>> {
-        Self::write_cmd(&mut self.stream, cmd)?;
-        loop {
+        self.write_cmd(cmd)?;
+        self.read_response(closure.as_ref())?;
+        Ok(())
+    }
+
+    pub fn read_response(
+        &mut self, 
+        closure : Option<&Closure>
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut reader = BufReader::new(&mut self.stream);
+          loop {
             let mut response = String::new();
-            match buff_reader.read_line(&mut response) {
+            match reader.read_line(&mut response) {
                 Ok(0) => break,
                 Ok(_) => {
                     if let Some(ref closure) = closure {
@@ -57,15 +65,14 @@ impl<T: Read + Write> LiveSmtp<T> {
                 Err(e) => return Err(Box::new(e)),
             }
         }
-
         Ok(())
     }
-
+    
     pub fn write_cmd(
-        stream: &mut impl Write,
+        &mut self,
         cmd: &[u8],
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let sending = stream.write_all(cmd)?;
+        let sending = self.stream.write_all(cmd)?;
         Ok(sending)
     }
 
@@ -74,7 +81,7 @@ impl<T: Read + Write> LiveSmtp<T> {
         config : Arc<SmtpConfig>,
     ) {
         
-        if let Err(e) = Self::write_cmd(&mut self.stream, b"EHLO \r\n") {
+        if let Err(e) = self.communicating( b"EHLO \r\n", None) {
             println!("Error occured cause {:?}", e)
         }
 
@@ -88,7 +95,7 @@ impl<T: Read + Write> LiveSmtp<T> {
     ) -> Result<LiveSmtp<StreamOwned<ClientConnection, T>>, Box<dyn std::error::Error>> {
         let mut move_buff_reader = buff_reader;
 
-        let _ = self.communicating(&mut move_buff_reader, b"STARTTLS \r\n", None);
+        let _ = self.communicating(b"STARTTLS \r\n", None);
 
         let mut root_store = RootCertStore::empty();
         root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
