@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use base64::{Engine, engine::general_purpose};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 use rustls_pki_types::ServerName;
 
@@ -40,12 +41,19 @@ impl<T: Read + Write> LiveSmtp<T> {
     pub fn communicating(
         &mut self,
         cmd: &[u8],
-        closure: Option<Closure>,
+        closure: Option<&Closure>,
         response_resullt: &mut Vec<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.write_cmd(cmd)?;
-        self.read_response(closure.as_ref(), response_resullt)?;
+        self.read_response(closure, response_resullt)?;
         Ok(())
+    }
+
+    pub fn encrypt(smtp_config : &Arc<SmtpConfig>) -> (String, String) {
+        let arc = Arc::clone(*(&smtp_config));
+        let decrypt_username = general_purpose::STANDARD.encode(&arc.username);
+        let decrypt_password = general_purpose::STANDARD.encode(&arc.password);
+         (decrypt_username, decrypt_password)
     }
 
     pub fn read_response(
@@ -81,35 +89,43 @@ impl<T: Read + Write> LiveSmtp<T> {
         Ok(sending)
     }
 
-    // pub fn authenticating (
-    //     &mut self,
-    //     config : Arc<SmtpConfig>,
-    // ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn authenticating (
+        &mut self,
+        config : Arc<SmtpConfig>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
 
-    //     if let Err(e) = self.communicating( b"EHLO\r\n", None) {
-    //         println!("Error occured cause {:?}", e);
-    //         return Err(e)
-    //     }
 
-    //     Ok(())
 
-    // }
+        if true {
+            return Err("".into());
+        }
+
+        Ok(())
+
+    }
 
     pub fn upgrade_tls(
         mut self,
         host: &str,
     ) -> Result<LiveSmtp<StreamOwned<ClientConnection, T>>, Box<dyn std::error::Error>> {
         let mut response_result: Vec<String> = Vec::new();
-        let closure : Option<Closure> = Some( Box::new(|response_result: &mut Vec<String>, response : String| {
+        let closure : Option<Closure> = Some(Box::new(|response_result: &mut Vec<String>, response : String| {
             response_result.push(response);
         }));
-        let _ = self.communicating(b"STARTTLS \r\n", closure, &mut response_result)?;
-        let is_tls_supported = response_result.into_iter().any(|response| {
+        let _ = self.communicating(b"EHLO\r\n", closure.as_ref(), &mut response_result)?;
+        let is_tls_supported = response_result.iter().any(|response| {
             response.starts_with("250-STARTTLS") || response.starts_with( "250 STARTTLS")
         });
 
         if !is_tls_supported {
             return Err("STARTTLS not supported".into());
+        }
+
+        let _ = self.communicating(b"STARTTLS\r\n", closure.as_ref(), &mut response_result);
+        let is_tls_ready = &response_result[response_result.len() - 1];
+
+        if is_tls_ready[0..2] != *"220" {
+            return Err("TLS is not ready".into())
         }
 
         let mut root_store = RootCertStore::empty();
