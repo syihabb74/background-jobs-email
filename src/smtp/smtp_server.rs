@@ -12,31 +12,41 @@ type Closure =
 
 pub struct SmtpConfig {
     host: &'static str,
-    username: String,
-    password: String,
+    credentials : CredentialsInput,
+}
+
+pub enum AuthMechanism {
+    Plain,
+    Login,
+    XOAuth,
+    XOAuth2,
+    OAuthBearer,
+    PlainClientToken,
+    Unknown(String)
+}
+
+pub struct EmailPassword {
+    email : String,
+    password : String
+}
+
+pub struct ApiKey {
+    email : String,
+    api_key : String
+}
+
+pub struct OAuth {
+    email : String,
+    access_token : String
+}
+
+pub enum CredentialsInput {
+    EmailPassword,
+    ApiKey,
+    OAuth
 }
 
 impl SmtpConfig {
-
-    pub fn host_name(&self) -> Option<String> {
-    self.host
-        .split_once(':')
-        .map(|(host, _)| host.to_string())
-}
-
-pub fn port(&self) -> Option<String> {
-    self.host
-        .split_once(':')
-        .map(|(_, port)| port.to_string())
-}
-
-    pub fn new(host: &'static str, username: String, password: String) -> Self {
-        Self {
-            host,
-            username,
-            password,
-        }
-    }
 
     pub fn connect<T>(&self, stream: T) -> LiveSmtp<T>
     where
@@ -51,6 +61,27 @@ pub struct LiveSmtp<T: Read + Write> {
 }
 
 impl<T: Read + Write> LiveSmtp<T> {
+
+    fn host_name(&self) -> String {
+        let host_name = self.host_name()
+        .split_once(":")
+        .map(|(host, _)| {
+            host.to_string()
+        })
+        .unwrap();
+        return host_name
+    }
+
+    fn port(&self) -> String {
+        let port = self.host_name()
+        .split_once(":")
+        .map(|(_, port)| {
+            port.to_string()
+        })
+        .unwrap();
+        return port
+    }
+
     pub fn communicating(
         &mut self,
         cmd: &[u8],
@@ -60,13 +91,6 @@ impl<T: Read + Write> LiveSmtp<T> {
         self.write_cmd(cmd)?;
         self.read_response(closure, response_resullt)?;
         Ok(())
-    }
-
-    pub fn encrypt(smtp_config : &Arc<SmtpConfig>) -> (String, String) {
-        let arc = Arc::clone(*(&smtp_config));
-        let decrypt_username = general_purpose::STANDARD.encode(&arc.username);
-        let decrypt_password = general_purpose::STANDARD.encode(&arc.password);
-         (decrypt_username, decrypt_password)
     }
 
     pub fn read_response(
@@ -102,12 +126,39 @@ impl<T: Read + Write> LiveSmtp<T> {
         Ok(sending)
     }
 
+    pub fn parse_auth(
+    bucket_response : &Vec<String> 
+) -> Vec<AuthMechanism> {
+    let mut v = Vec::new();
+
+    for auth_mech in bucket_response {
+        if let Some(m) = auth_mech.strip_prefix("250-AUTH ") {
+            match m {
+                "PLAIN" => v.push(AuthMechanism::Plain),
+                "LOGIN" => v.push(AuthMechanism::Login),
+                "XOAUTH2" => v.push(AuthMechanism::XOAuth2),
+                "OAUTHBEARER" => v.push(AuthMechanism::OAuthBearer),
+                "PLAIN-CLIENTTOKEN" => v.push(AuthMechanism::PlainClientToken),
+                "XOAUTH" => v.push(AuthMechanism::XOAuth),
+                x => v.push(AuthMechanism::Unknown(x.into())),
+            };
+        }
+    };
+
+    v
+}
+
     pub fn authenticating (
-        &mut self,
-        config : Arc<SmtpConfig>,
+        &mut self
     ) -> Result<(), Box<dyn std::error::Error>> {
 
+        let closure : Option<Closure> = Some(Box::new(|response_result: &mut Vec<String>, response : String| {
+            response_result.push(response);
+        }));
 
+        let mut response_result : Vec<String> = Vec::new();
+        let _ = self.communicating(b"EHLO\r\n", closure.as_ref(), &mut response_result);
+        let auth_mechs = Self::parse_auth(&response_result);
 
         if true {
             return Err("".into());
