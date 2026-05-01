@@ -7,6 +7,8 @@ use base64::{Engine, engine::general_purpose};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 use rustls_pki_types::ServerName;
 
+use crate::cli::cli_smtp;
+
 type Closure =
     Box<dyn 'static + Fn(&mut Vec<String>, String)>;
 
@@ -159,7 +161,7 @@ impl<T: Read + Write> LiveSmtp<T> {
         let mut response_result : Vec<String> = Vec::new();
         let _ = self.communicating(b"EHLO\r\n", closure.as_ref(), &mut response_result);
         let auth_mechs = Self::parse_auth(&response_result);
-
+        let result = cli_smtp(auth_mechs)?;
         if true {
             return Err("".into());
         }
