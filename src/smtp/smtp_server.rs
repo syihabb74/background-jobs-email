@@ -17,6 +17,19 @@ pub struct SmtpConfig {
 }
 
 impl SmtpConfig {
+
+    pub fn host_name(&self) -> Option<String> {
+    self.host
+        .split_once(':')
+        .map(|(host, _)| host.to_string())
+}
+
+pub fn port(&self) -> Option<String> {
+    self.host
+        .split_once(':')
+        .map(|(_, port)| port.to_string())
+}
+
     pub fn new(host: &'static str, username: String, password: String) -> Self {
         Self {
             host,
