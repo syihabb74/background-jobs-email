@@ -9,15 +9,7 @@ pub fn cli_auth_smtp(auth_mechs: Vec<AuthMechanism>) -> Result<AuthMechanism, Bo
     println!("Server supports authentication:\n");
 
     for (i, auth) in auth_mechs.iter().enumerate() {
-        match auth {
-            AuthMechanism::Plain => println!("[{}] PLAIN  -> Email + Password (base64)", i),
-            AuthMechanism::Login => println!("[{}] LOGIN  -> Email + Password (challenge based)", i),
-            AuthMechanism::XOAuth => println!("[{}] XOAUTH -> OAuth 1.0 token (legacy)", i),
-            AuthMechanism::XOAuth2 => println!("[{}] XOAUTH2 -> OAuth 2.0 access token", i),
-            AuthMechanism::OAuthBearer => println!("[{}] OAUTHBEARER -> OAuth 2.0 bearer token (RFC 7628)", i),
-            AuthMechanism::PlainClientToken => println!("[{}] PLAIN-CLIENTTOKEN -> Google client token auth", i),
-            AuthMechanism::Unknown(name) => println!("[{}] {} -> Unknown mechanism", i, name),
-        }
+        auth.cli_display(i);
     }
 
     println!("\nChoose authentication method by number:");
@@ -50,29 +42,5 @@ pub fn prompt(label: &str, output: &mut String) {
 }
 
 pub fn cli_auth_credentials(auth_mechanism: &AuthMechanism) -> Result<SmtpCredential, Box<dyn std::error::Error>> {
-    match auth_mechanism {
-        AuthMechanism::Plain |
-        AuthMechanism::PlainClientToken |
-        AuthMechanism::Login => {
-            let mut email = String::new();
-            let mut password = String::new();
-            prompt("Email", &mut email);
-            prompt("Password", &mut password);
-            Ok(SmtpCredential::new_email_password(email, password))
-        }
-        AuthMechanism::XOAuth |
-        AuthMechanism::XOAuth2 => {
-            let mut email = String::new();
-            let mut token = String::new();
-            prompt("Email", &mut email);
-            prompt("OAuth Token", &mut token);
-            Ok(SmtpCredential::new_oauth(email, token))
-        }
-        AuthMechanism::OAuthBearer => {
-            let mut token = String::new();
-            prompt("Bearer Token", &mut token);
-            Ok(SmtpCredential::new_oauth_bearer(token))
-        }
-        AuthMechanism::Unknown(s) => Err(s.to_string().into())
-    }
+    auth_mechanism.generate_credentials()
 }

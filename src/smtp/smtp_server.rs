@@ -14,10 +14,6 @@ pub struct SmtpConfig {
     host: &'static str,
 }
 
-
-
-
-
 #[derive(Debug)]
 pub enum SmtpCredential {
 
@@ -136,15 +132,8 @@ impl<T: Read + Write> LiveSmtp<T> {
     for line in bucket_response {
         if let Some(mechs) = line.trim().strip_prefix("250-AUTH ") {
             for mech in mechs.split_whitespace() {
-                match mech {
-                    "PLAIN" => v.push(AuthMechanism::Plain),
-                    "LOGIN" => v.push(AuthMechanism::Login),
-                    "XOAUTH2" => v.push(AuthMechanism::XOAuth2),
-                    "OAUTHBEARER" => v.push(AuthMechanism::OAuthBearer),
-                    "PLAIN-CLIENTTOKEN" => v.push(AuthMechanism::PlainClientToken),
-                    "XOAUTH" => v.push(AuthMechanism::XOAuth),
-                    x => v.push(AuthMechanism::Unknown(x.into())),
-                }
+               let mechanism = AuthMechanism::new(mech);
+               v.push(mechanism);
             }
         }
     }
