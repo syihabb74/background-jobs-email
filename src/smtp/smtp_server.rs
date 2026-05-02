@@ -8,11 +8,9 @@ use rustls_pki_types::ServerName;
 
 use crate::{Closure, cli::{cli_auth_credentials, cli_auth_smtp}, smtp::{auth_mechanism::AuthMechanism, tcp_com::{read_response, write_cmd}}};
 
-pub struct SmtpConfig {
-    auth_mechanism : Option<AuthMechanism>,
-    credentials : Option<SmtpCredential>,
-    host: &'static str,
-}
+
+
+
 
 #[derive(Debug)]
 pub enum SmtpCredential {
@@ -72,45 +70,12 @@ impl SmtpCredential {
 
 }
 
-impl SmtpConfig {
 
-    pub fn new(host : &'static str) -> Self {
-        Self { host,credentials : None, auth_mechanism : None }
-    }
-
-    pub fn connect(&self) -> Result<LiveSmtp<TcpStream>, io::Error> {
-        let stream = TcpStream::connect(self.host)?;
-        let server_name = self.host_name();
-        Ok(LiveSmtp { stream , server_name})
-    }
-
-     fn host_name(&self) -> String {
-        let host_name = self.host
-        .split_once(":")
-        .map(|(host, _)| {
-            host.to_string()
-        })
-        .unwrap();
-        println!("{}", host_name);
-        return host_name
-    }
-
-    fn port(&self) -> String {
-        let port = self.host_name()
-        .split_once(":")
-        .map(|(_, port)| {
-            port.to_string()
-        })
-        .unwrap();
-        return port
-    }
-
-}
 
 #[derive(Debug)]
 pub struct LiveSmtp<T: Read + Write> {
-    stream: T,
-    server_name :  String
+    pub stream: T,
+    pub server_name :  String
 }
 
 impl<T: Read + Write> LiveSmtp<T> {
@@ -119,10 +84,10 @@ impl<T: Read + Write> LiveSmtp<T> {
         &mut self,
         cmd: &[u8],
         closure: Option<&Closure>,
-        response_resullt: &mut Vec<String>,
+        response_result: &mut Vec<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         write_cmd(&mut self.stream, cmd)?;
-        read_response(&mut self.stream,closure, response_resullt)?;
+        read_response(&mut self.stream,closure, response_result)?;
         Ok(())
     }
 
@@ -143,7 +108,7 @@ impl<T: Read + Write> LiveSmtp<T> {
 
     pub fn authenticating (
         &mut self
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(AuthMechanism, SmtpCredential), Box<dyn std::error::Error>> {
 
         let closure : Option<Closure> = Some(Box::new(|response_result: &mut Vec<String>, response : String| {
             response_result.push(response);
@@ -153,20 +118,10 @@ impl<T: Read + Write> LiveSmtp<T> {
         let _ = self.communicating(b"EHLO mylocalhost\r\n", closure.as_ref(), &mut response_result);
         let _ = self.communicating(b"AUTH LOGIN\r\n", closure.as_ref(), &mut response_result);
         let auth_mechs = Self::parse_auth(&response_result);
-        println!("{:#?}", auth_mechs);
         let auth_mech = cli_auth_smtp(auth_mechs)?;
         let credentials = cli_auth_credentials(&auth_mech)?;
-        println!("{:?}", credentials);
-        if true {
-            return Err("".into());
-        }
+        return Ok((auth_mech, credentials));
 
-        Ok(())
-
-    }
-
-    pub fn auth_process(input : Option<String>) {
-        
     }
 
     pub fn upgrade_tls(
@@ -176,17 +131,16 @@ impl<T: Read + Write> LiveSmtp<T> {
         let closure : Option<Closure> = Some(Box::new(|response_result: &mut Vec<String>, response : String| {
             response_result.push(response);
         }));
-        let _ = self.communicating(b"EHLO mylocalhost\r\n", closure.as_ref(), &mut response_result)?;
+        self.communicating(b"EHLO mylocalhost\r\n", closure.as_ref(), &mut response_result)?;
         let is_tls_supported = response_result.iter().any(|response| {
             response.starts_with("250-STARTTLS") || response.starts_with( "250 STARTTLS")
         });
-        println!("{:?}, {}", response_result, is_tls_supported);
 
         if !is_tls_supported {
             return Err("STARTTLS not supported".into());
         }
 
-        let _ = self.communicating(b"STARTTLS\r\n", closure.as_ref(), &mut response_result);
+        self.communicating(b"STARTTLS\r\n", closure.as_ref(), &mut response_result)?;
         let is_tls_ready = &response_result[response_result.len() - 1];
 
         println!("{:?}", is_tls_ready);

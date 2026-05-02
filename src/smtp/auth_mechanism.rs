@@ -45,16 +45,16 @@ impl AuthMechanism {
         AuthMechanism::Login => {
             let mut email = String::new();
             let mut password = String::new();
-            prompt("Email", &mut email);
-            prompt("Password", &mut password);
+            prompt("Insert your email / username :", &mut email);
+            prompt("Insert your password :", &mut password);
             Ok(SmtpCredential::new_email_password(email, password))
         }
         AuthMechanism::XOAuth |
         AuthMechanism::XOAuth2 => {
             let mut email = String::new();
             let mut token = String::new();
-            prompt("Email", &mut email);
-            prompt("OAuth Token", &mut token);
+            prompt("Insert your email / username :", &mut email);
+            prompt("Insert your OAuth Token :", &mut token);
             Ok(SmtpCredential::new_oauth(email, token))
         }
         AuthMechanism::OAuthBearer => {

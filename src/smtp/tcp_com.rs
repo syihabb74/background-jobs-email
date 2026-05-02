@@ -22,7 +22,6 @@ use crate::Closure;
                 Ok(0) => break,
                 Ok(_) => {
                     let is_last = response.as_bytes().get(3) == Some(&b' ');
-                    // println!("{}", response);
                     if let Some(closure) = closure {
                         closure(response_result, response);
                     }

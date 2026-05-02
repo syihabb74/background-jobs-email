@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Write, Error};
 use crate::smtp::{auth_mechanism::AuthMechanism, smtp_server::SmtpCredential};
 
 pub fn cli_auth_smtp(auth_mechs: Vec<AuthMechanism>) -> Result<AuthMechanism, Box<dyn std::error::Error>> {
@@ -12,10 +12,8 @@ pub fn cli_auth_smtp(auth_mechs: Vec<AuthMechanism>) -> Result<AuthMechanism, Bo
         auth.cli_display(i);
     }
 
-    println!("\nChoose authentication method by number:");
-
     let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
+    prompt("\nChoose authentication method by number",&mut input)?;
 
     let choice: usize = input
         .trim()
@@ -34,11 +32,13 @@ pub fn cli_auth_smtp(auth_mechs: Vec<AuthMechanism>) -> Result<AuthMechanism, Bo
         .ok_or_else(|| "Index tidak ditemukan".into())
 }
 
-pub fn prompt(label: &str, output: &mut String) {
+
+pub fn prompt(label: &str, output: &mut String) -> Result<(), Error> {
     print!("{}: ", label);
     io::stdout().flush().unwrap();
     io::stdin().read_line(output).unwrap();
     *output = output.trim().to_string();  // hapus \n
+    Ok(())
 }
 
 pub fn cli_auth_credentials(auth_mechanism: &AuthMechanism) -> Result<SmtpCredential, Box<dyn std::error::Error>> {
