@@ -161,7 +161,6 @@ impl<T: Read + Write> LiveSmtp<T> {
             closure.as_ref(),
             &mut response_result,
         );
-        let _ = self.communicating(b"AUTH LOGIN\r\n", closure.as_ref(), &mut response_result);
         let auth_mechs = Self::parse_auth(&response_result);
         let auth_mech = cli_auth_smtp(auth_mechs)?;
         let credentials = cli_auth_credentials(&auth_mech)?;
@@ -176,19 +175,25 @@ impl<T: Read + Write> LiveSmtp<T> {
         let mut response_result: Vec<String> = Vec::new();
         let credentials = smtp_config_clone.credentials.as_ref();
         let auth_mechanism = smtp_config_clone.auth_mechanism.as_ref();
+        println!("{:?} {:?}", credentials, auth_mechanism);
         if credentials.is_some() && auth_mechanism.is_some() {
+            let _ = self.communicating(
+            b"EHLO mylocalhost\r\n",
+            None,
+            &mut response_result,
+        );
             let c = credentials.unwrap();
             let a_m = auth_mechanism.unwrap();
             match a_m {
                 AuthMechanism::Login => {
-                    let _ = self.communicating(b"AUTH LOGIN", None, &mut response_result)?;
+                    let _ = self.communicating(b"AUTH LOGIN\r\n", None, &mut response_result)?;
                     let encode = c.encode_auth(a_m)?;
                     let (email, password) = encode
                         .split_once(',')
                         .map(|(u, p)| (u.to_string(), p.to_string()))
                         .ok_or("Invalid encode format")?;
-                    let _ = self.communicating(format!("{}",email).as_bytes(), None, &mut response_result);
-                    let _ = self.communicating(format!("{}",password).as_bytes(), None, &mut response_result);
+                    let _ = self.communicating(format!("{}\r\n",email).as_bytes(), None, &mut response_result);
+                    let _ = self.communicating(format!("{}\r\n",password).as_bytes(), None, &mut response_result);
                 }
                 _ => {
                     let encoded = credentials.unwrap().encode_auth(a_m)?;
@@ -199,9 +204,6 @@ impl<T: Read + Write> LiveSmtp<T> {
             }
         }
 
-        if true {
-            return Err("test".into());
-        }
         Ok(())
     }
 
@@ -229,8 +231,6 @@ impl<T: Read + Write> LiveSmtp<T> {
 
         self.communicating(b"STARTTLS\r\n", closure.as_ref(), &mut response_result)?;
         let is_tls_ready = &response_result[response_result.len() - 1];
-
-        println!("{:?}", is_tls_ready);
 
         if !is_tls_ready.starts_with("220") {
             return Err("TLS is not ready".into());

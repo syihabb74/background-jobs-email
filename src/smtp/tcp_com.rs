@@ -21,6 +21,7 @@ use crate::Closure;
             match reader.read_line(&mut response) {
                 Ok(0) => break,
                 Ok(_) => {
+                    println!("{response}");
                     let is_last = response.as_bytes().get(3) == Some(&b' ');
                     if let Some(closure) = closure {
                         closure(response_result, response);

@@ -9,7 +9,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (auth_mech, smtp_credential) = tls_smtp_server.check_auth_method()?;
     smtp_config.set_auth_mech(auth_mech);
     smtp_config.set_smtp_credentials(smtp_credential);
-    println!("{:?}", smtp_config);
+    let smtp_config = Arc::new(smtp_config);
+    tls_smtp_server.login(&smtp_config)?;
 
 
     process::exit(1);
