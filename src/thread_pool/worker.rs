@@ -4,7 +4,6 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::{
     sync::{Arc, Condvar, Mutex},
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
 pub struct Worker {

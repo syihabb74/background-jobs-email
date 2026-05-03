@@ -37,15 +37,15 @@ impl SmtpConfig {
         return host_name
     }
 
-    fn port(&self) -> String {
-        let port = self.host_name()
-        .split_once(":")
-        .map(|(_, port)| {
-            port.to_string()
-        })
-        .unwrap();
-        return port
-    }
+    // fn port(&self) -> String {
+    //     let port = self.host_name()
+    //     .split_once(":")
+    //     .map(|(_, port)| {
+    //         port.to_string()
+    //     })
+    //     .unwrap();
+    //     return port
+    // }
 
     pub fn set_auth_mech(&mut self,auth_mech : AuthMechanism) {
         self.auth_mechanism = Some(auth_mech)

@@ -11,8 +11,8 @@ use crate::{
     Closure,
     cli::{cli_auth_credentials, cli_auth_smtp},
     smtp::{
-        auth_mechanism::{self, AuthMechanism},
-        smtp_config::{self, SmtpConfig},
+        auth_mechanism::{AuthMechanism},
+        smtp_config::{SmtpConfig},
         tcp_com::{read_response, write_cmd},
     },
 };
