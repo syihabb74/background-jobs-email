@@ -4,9 +4,9 @@ use crate::{cli::prompt, smtp::{auth_mechanism::AuthMechanism, smtp_server::{Liv
 
 #[derive(Debug)]
 pub struct SmtpConfig {
-    auth_mechanism : Option<AuthMechanism>,
-    credentials : Option<SmtpCredential>,
-    host: String,
+    pub auth_mechanism : Option<AuthMechanism>,
+    pub credentials : Option<SmtpCredential>,
+    pub host: String,
 }
 
 impl SmtpConfig {

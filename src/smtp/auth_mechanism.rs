@@ -25,6 +25,18 @@ impl AuthMechanism {
                 }
     }
 
+    pub fn auth_command(&self) -> Option<String> {
+    match self {
+        Self::Login => Some("AUTH LOGIN\r\n".into()),
+        Self::Plain => Some("AUTH PLAIN".into()),
+        Self::PlainClientToken => Some("AUTH PLAIN-CLIENTTOKEN".into()),
+        Self::XOAuth => Some("AUTH XOAUTH".into()),
+        Self::XOAuth2 => Some("AUTH XOAUTH2".into()),
+        Self::OAuthBearer => Some("AUTH OAUTHBEARER".into()),
+        Self::Unknown(_) => None,
+    }
+}
+
     pub fn cli_display(&self, no: usize) {
         match self {
             AuthMechanism::Plain => println!("[{}] PLAIN  -> Email + Password (base64)", no),
@@ -45,21 +57,26 @@ impl AuthMechanism {
         AuthMechanism::Login => {
             let mut email = String::new();
             let mut password = String::new();
-            prompt("Insert your email / username :", &mut email);
-            prompt("Insert your password :", &mut password);
+            prompt("Insert your email / username", &mut email)
+            .expect("Expected email / username");
+            prompt("Insert your password", &mut password)
+            .expect("Expected password");
             Ok(SmtpCredential::new_email_password(email, password))
         }
         AuthMechanism::XOAuth |
         AuthMechanism::XOAuth2 => {
             let mut email = String::new();
             let mut token = String::new();
-            prompt("Insert your email / username :", &mut email);
-            prompt("Insert your OAuth Token :", &mut token);
+            prompt("Insert your email / username", &mut email)
+            .expect("Expected email / username");
+            prompt("Insert your OAuth Token", &mut token)
+            .expect("Expected OAuth Token");
             Ok(SmtpCredential::new_oauth(email, token))
         }
         AuthMechanism::OAuthBearer => {
             let mut token = String::new();
-            prompt("Bearer Token", &mut token);
+            prompt("Bearer Token", &mut token)
+            .expect("Bearer Token");
             Ok(SmtpCredential::new_oauth_bearer(token))
         }
         AuthMechanism::Unknown(s) => Err(s.to_string().into())
