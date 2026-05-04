@@ -27,5 +27,4 @@ impl AppState {
             self.has_task = false;
         }
     }
-
 }

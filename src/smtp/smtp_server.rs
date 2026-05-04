@@ -11,8 +11,8 @@ use crate::{
     Closure,
     cli::{cli_auth_credentials, cli_auth_smtp},
     smtp::{
-        auth_mechanism::{AuthMechanism},
-        smtp_config::{SmtpConfig},
+        auth_mechanism::AuthMechanism,
+        smtp_config::SmtpConfig,
         tcp_com::{read_response, write_cmd},
     },
 };
@@ -177,11 +177,7 @@ impl<T: Read + Write> LiveSmtp<T> {
         let auth_mechanism = smtp_config_clone.auth_mechanism.as_ref();
         println!("{:?} {:?}", credentials, auth_mechanism);
         if credentials.is_some() && auth_mechanism.is_some() {
-            let _ = self.communicating(
-            b"EHLO mylocalhost\r\n",
-            None,
-            &mut response_result,
-        );
+            let _ = self.communicating(b"EHLO mylocalhost\r\n", None, &mut response_result);
             let c = credentials.unwrap();
             let a_m = auth_mechanism.unwrap();
             match a_m {
@@ -192,8 +188,16 @@ impl<T: Read + Write> LiveSmtp<T> {
                         .split_once(',')
                         .map(|(u, p)| (u.to_string(), p.to_string()))
                         .ok_or("Invalid encode format")?;
-                    let _ = self.communicating(format!("{}\r\n",email).as_bytes(), None, &mut response_result);
-                    let _ = self.communicating(format!("{}\r\n",password).as_bytes(), None, &mut response_result);
+                    let _ = self.communicating(
+                        format!("{}\r\n", email).as_bytes(),
+                        None,
+                        &mut response_result,
+                    );
+                    let _ = self.communicating(
+                        format!("{}\r\n", password).as_bytes(),
+                        None,
+                        &mut response_result,
+                    );
                 }
                 _ => {
                     let encoded = credentials.unwrap().encode_auth(a_m)?;
@@ -255,12 +259,3 @@ impl<T: Read + Write> LiveSmtp<T> {
         })
     }
 }
-
-// todo
-// check tls supported
-// check starttls ready
-// do auth
-// connect smtp
-// ready
-// make 4 thread
-// implement all of this to each thread

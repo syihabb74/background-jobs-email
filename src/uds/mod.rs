@@ -2,15 +2,12 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::{
     io::{ErrorKind, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
-    sync::{ mpsc::Sender},
+    sync::mpsc::Sender,
     thread,
     time::Duration,
 };
 
-use crate::{
-    WILL_SHUTDOWN,
-    email::Email,
-};
+use crate::{WILL_SHUTDOWN, email::Email};
 
 #[derive(Debug)]
 pub struct UnixServer {
@@ -125,7 +122,7 @@ fn handle_client(mut stream: UnixStream, sender: Sender<Email>) {
     loop {
         if WILL_SHUTDOWN.load(Relaxed) {
             stream.write_all(b"Server will be shutdown").unwrap();
-            continue
+            continue;
         }
         match stream.read(&mut buffer) {
             Ok(0) => {

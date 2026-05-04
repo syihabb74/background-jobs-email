@@ -34,7 +34,7 @@ impl Worker {
                 let job = guard.remove_queue();
 
                 drop(guard);
-                
+
                 if let Some(email) = job {
                     let mut app_state_lock = app_state.lock().unwrap();
                     app_state_lock.decrease_task();
@@ -43,12 +43,10 @@ impl Worker {
                         format!("Jumlah Task {}", app_state_lock.total_task).red()
                     );
                     drop(app_state_lock);
-                    
+
                     println!("{}", format!("Worker {} memproses", no).red());
                 }
             }
-
-
         });
 
         let _no = no;
@@ -57,4 +55,3 @@ impl Worker {
         Self { _no, _thread }
     }
 }
-

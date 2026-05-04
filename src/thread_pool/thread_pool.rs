@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Condvar, Mutex}};
+use std::sync::{Arc, Condvar, Mutex};
 
 use crate::{app_state::AppState, queue::Queue, thread_pool::worker::Worker};
 
@@ -12,7 +12,6 @@ impl ThreadPool {
         queue_state: Arc<(Mutex<Queue>, Condvar)>,
         app_state: Arc<Mutex<AppState>>,
     ) -> Self {
-
         if size < 1 {
             panic!("0 or negative is not allowed");
         }
@@ -29,5 +28,3 @@ impl ThreadPool {
         }
     }
 }
-
-
